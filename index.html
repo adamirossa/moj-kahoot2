@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Kahoot Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .pin-input {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .host-btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error {
+            background: rgba(231, 76, 60, 0.8);
+        }
+
+        .success {
+            background: rgba(46, 204, 113, 0.8);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .features {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .feature {
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Kahoot</h1>
+        <p class="subtitle">Pripoj sa do hry!</p>
+
+        <div id="message" class="message"></div>
+
+        <div class="input-group">
+            <input 
+                type="text" 
+                id="gamePin" 
+                placeholder="Zadaj PIN hry"
+                class="pin-input"
+                maxlength="6"
+            >
+            <input 
+                type="text" 
+                id="playerName" 
+                placeholder="Tvoje meno"
+                maxlength="20"
+            >
+        </div>
+
+        <button id="joinBtn" onclick="joinGame()">
+            Vstúpiť do hry
+        </button>
+
+        <button class="host-btn" onclick="window.location.href='/host'">
+            👨‍🏫 Som učiteľ
+        </button>
+
+        <div class="features">
+            <div class="feature">✅ Real-time multiplayer kvízy</div>
+            <div class="feature">⚡ Bodovanie na základe rýchlosti</div>
+            <div class="feature">🏆 Live rebríčky</div>
+            <div class="feature">📱 Funguje na mobile</div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        // Auto-uppercase PIN input
+        document.getElementById('gamePin').addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
+
+        // Enter key support
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                joinGame();
+            }
+        });
+
+        function showMessage(text, type = 'error') {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function joinGame() {
+            const pin = document.getElementById('gamePin').value.trim();
+            const name = document.getElementById('playerName').value.trim();
+            const joinBtn = document.getElementById('joinBtn');
+
+            if (!pin) {
+                showMessage('Zadaj PIN hry!');
+                return;
+            }
+
+            if (!name) {
+                showMessage('Zadaj svoje meno!');
+                return;
+            }
+
+            if (pin.length !== 6) {
+                showMessage('PIN musí mať 6 číslic!');
+                return;
+            }
+
+            // Show loading
+            joinBtn.innerHTML = '<span class="loading"></span> Pripájam sa...';
+            joinBtn.disabled = true;
+
+            // Join game
+            socket.emit('player-join', { pin, name });
+        }
+
+        // Socket events
+        socket.on('player-joined', (data) => {
+            const joinBtn = document.getElementById('joinBtn');
+            joinBtn.innerHTML = 'Vstúpiť do hry';
+            joinBtn.disabled = false;
+
+            if (data.success) {
+                // Store player data
+                localStorage.setItem('playerData', JSON.stringify({
+                    pin: document.getElementById('gamePin').value,
+                    name: document.getElementById('playerName').value,
+                    playerId: data.player.id
+                }));
+                
+                // Redirect to game
+                window.location.href = `/game/${document.getElementById('gamePin').value}`;
+            } else {
+                showMessage(data.error || 'Chyba pri pripájaní do hry');
+            }
+        });
+
+        // Check URL for PIN
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPin = urlParams.get('pin');
+        if (urlPin) {
+            document.getElementById('gamePin').value = urlPin;
+        }
+    </script>
+</body>
+</html>

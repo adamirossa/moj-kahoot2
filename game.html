@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Kahoot - Hra</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .player-info {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f39c12;
+            margin-bottom: 20px;
+        }
+
+        .question {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .timer {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #f39c12;
+        }
+
+        .timer.warning {
+            color: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .answers {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .answer {
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .answer:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .answer.selected {
+            background: rgba(52, 152, 219, 0.8);
+            border-color: #3498db;
+            transform: scale(1.05);
+        }
+
+        .answer.correct {
+            background: rgba(46, 204, 113, 0.8);
+            border-color: #2ecc71;
+        }
+
+        .answer.incorrect {
+            background: rgba(231, 76, 60, 0.8);
+            border-color: #e74c3c;
+        }
+
+        .answer.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .answer-colors {
+            background: #e74c3c; /* Red */
+        }
+        .answer:nth-child(2) {
+            background: rgba(52, 152, 219, 0.3); /* Blue */
+        }
+        .answer:nth-child(3) {
+            background: rgba(243, 156, 18, 0.3); /* Orange */
+        }
+        .answer:nth-child(4) {
+            background: rgba(46, 204, 113, 0.3); /* Green */
+        }
+
+        .waiting {
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+
+        .result {
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-size: 1.3rem;
+        }
+
+        .result.correct {
+            background: rgba(46, 204, 113, 0.8);
+        }
+
+        .result.incorrect {
+            background: rgba(231, 76, 60, 0.8);
+        }
+
+        .leaderboard {
+            text-align: left;
+            margin: 20px 0;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .leaderboard-item.current-player {
+            background: rgba(52, 152, 219, 0.3);
+            border: 2px solid #3498db;
+        }
+
+        .position {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .game-screen {
+            display: none;
+        }
+
+        .game-screen.active {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .timer {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Waiting for game start -->
+        <div id="waitingScreen" class="game-screen active">
+            <div class="card">
+                <h1>🎮 Pripojený!</h1>
+                <div class="player-info">
+                    Ahoj, <strong id="playerName">Hráč</strong>!
+                </div>
+                <div class="waiting">
+                    <div class="loading"></div>
+                    <p>Čakáme na spustenie hry...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question screen -->
+        <div id="questionScreen" class="game-screen">
+            <div class="card">
+                <div class="player-info">
+                    <span id="playerNameGame">Hráč</span> • 
+                    <span id="questionNumber">Otázka 1/5</span>
+                </div>
+                <div class="score" id="currentScore">0 bodov</div>
+                <div class="question" id="questionText">Otázka sa načítava...</div>
+                <div class="timer" id="timer">20</div>
+                <div class="answers" id="answersContainer">
+                    <!-- Answers will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Results screen -->
+        <div id="resultsScreen" class="game-screen">
+            <div class="card">
+                <h1>📊 Výsledky</h1>
+                <div id="answerResult" class="result">
+                    <!-- Result will be shown here -->
+                </div>
+                <div class="score" id="resultScore">0 bodov</div>
+                <div class="waiting">
+                    <div class="loading"></div>
+                    <p>Čakáme na ďalšiu otázku...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard screen -->
+        <div id="leaderboardScreen" class="game-screen">
+            <div class="card">
+                <h1>🏆 Rebríček</h1>
+                <div class="leaderboard" id="leaderboardContainer">
+                    <!-- Leaderboard will be shown here -->
+                </div>
+                <div class="waiting">
+                    <div class="loading"></div>
+                    <p>Čakáme na pokračovanie...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final results -->
+        <div id="finalScreen" class="game-screen">
+            <div class="card">
+                <h1>🎉 Hra skončila!</h1>
+                <div class="leaderboard" id="finalLeaderboard">
+                    <!-- Final results will be shown here -->
+                </div>
+                <div style="margin-top: 30px;">
+                    <button onclick="window.location.href='/'" style="background: linear-gradient(45deg, #4ecdc4, #44a08d); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 10px; cursor: pointer;">
+                        🎮 Nová hra
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        let playerData = null;
+        let currentQuestion = null;
+        let selectedAnswer = null;
+        let questionStartTime = null;
+        let questionTimer = null;
+
+        // Get player data from localStorage or URL
+        function initializePlayer() {
+            const stored = localStorage.getItem('playerData');
+            if (stored) {
+                playerData = JSON.parse(stored);
+            } else {
+                // Get PIN from URL
+                const pathParts = window.location.pathname.split('/');
+                const pin = pathParts[pathParts.length - 1];
+                
+                if (pin && pin.length === 6) {
+                    // Redirect to join page
+                    window.location.href = `/?pin=${pin}`;
+                    return;
+                }
+            }
+
+            if (!playerData) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Display player name
+            document.getElementById('playerName').textContent = playerData.name;
+            document.getElementById('playerNameGame').textContent = playerData.name;
+
+            // Rejoin game
+            socket.emit('player-join', {
+                pin: playerData.pin,
+                name: playerData.name
+            });
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.game-screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function startQuestionTimer(duration) {
+            let timeLeft = duration;
+            const timerEl = document.getElementById('timer');
+            
+            questionTimer = setInterval(() => {
+                timerEl.textContent = timeLeft;
+                
+                if (timeLeft <= 5) {
+                    timerEl.classList.add('warning');
+                } else {
+                    timerEl.classList.remove('warning');
+                }
+                
+                if (timeLeft <= 0) {
+                    clearInterval(questionTimer);
+                    submitAnswer();
+                }
+                
+                timeLeft--;
+            }, 1000);
+        }
+
+        function selectAnswer(answerIndex) {
+            if (selectedAnswer !== null) return; // Already answered
+            
+            selectedAnswer = answerIndex;
+            
+            // Update UI
+            document.querySelectorAll('.answer').forEach((answer, index) => {
+                if (index === answerIndex) {
+                    answer.classList.add('selected');
+                } else {
+                    answer.classList.add('disabled');
+                }
+            });
+            
+            // Submit answer immediately
+            setTimeout(submitAnswer, 500);
+        }
+
+        function submitAnswer() {
+            if (!currentQuestion || selectedAnswer === null) return;
+            
+            const responseTime = Math.floor((Date.now() - questionStartTime) / 1000);
+            
+            socket.emit('submit-answer', {
+                pin: playerData.pin,
+                answerIndex: selectedAnswer,
+                responseTime: responseTime
+            });
+            
+            // Disable all answers
+            document.querySelectorAll('.answer').forEach(answer => {
+                answer.classList.add('disabled');
+            });
+            
+            if (questionTimer) {
+                clearInterval(questionTimer);
+            }
+        }
+
+        function updateLeaderboard(players, containerId, showAll = false) {
+            const container = document.getElementById(containerId);
+            const displayPlayers = showAll ? players : players.slice(0, 5);
+            
+            container.innerHTML = displayPlayers.map((player, index) => {
+                const medals = ['🥇', '🥈', '🥉'];
+                const medal = medals[index] || `${index + 1}.`;
+                const isCurrentPlayer = player.name === playerData.name;
+                
+                return `
+                    <div class="leaderboard-item ${isCurrentPlayer ? 'current-player' : ''}">
+                        <div>
+                            <span class="position">${medal}</span>
+                            <span>${player.name}${isCurrentPlayer ? ' (Vy)' : ''}</span>
+                        </div>
+                        <span><strong>${player.score}</strong></span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Socket events
+        socket.on('player-joined', (data) => {
+            if (!data.success) {
+                alert(data.error || 'Chyba pri pripojení');
+                window.location.href = '/';
+            }
+        });
+
+        socket.on('question-start', (data) => {
+            currentQuestion = data;
+            selectedAnswer = null;
+            questionStartTime = Date.now();
+            
+            showScreen('questionScreen');
+            
+            // Update question info
+            document.getElementById('questionNumber').textContent = 
+                `Otázka ${data.questionNumber}/${data.totalQuestions}`;
+            document.getElementById('questionText').textContent = data.question;
+            
+            // Create answer buttons
+            const answersContainer = document.getElementById('answersContainer');
+            answersContainer.innerHTML = data.answers.map((answer, index) => {
+                if (!answer.text) return ''; // Skip empty answers
+                
+                return `
+                    <div class="answer" onclick="selectAnswer(${index})">
+                        ${answer.text}
+                    </div>
+                `;
+            }).join('');
+            
+            // Start timer
+            startQuestionTimer(data.timeLimit);
+        });
+
+        socket.on('answer-result', (data) => {
+            const resultEl = document.getElementById('answerResult');
+            const scoreEl = document.getElementById('resultScore');
+            
+            if (data.isCorrect) {
+                resultEl.innerHTML = `
+                    <div style="font-size: 2rem; margin-bottom: 10px;">✅</div>
+                    <div>Správne!</div>
+                    <div>+${data.points} bodov</div>
+                `;
+                resultEl.className = 'result correct';
+            } else {
+                resultEl.innerHTML = `
+                    <div style="font-size: 2rem; margin-bottom: 10px;">❌</div>
+                    <div>Nesprávne</div>
+                    <div>+0 bodov</div>
+                `;
+                resultEl.className = 'result incorrect';
+            }
+            
+            // Update score
+            const currentPlayerScore = document.getElementById('currentScore').textContent;
+            const newScore = parseInt(currentPlayerScore.replace(/\D/g, '')) + data.points;
+            document.getElementById('currentScore').textContent = `${newScore} bodov`;
+            scoreEl.textContent = `${newScore} bodov`;
+            
+            showScreen('resultsScreen');
+        });
+
+        socket.on('results-show', (data) => {
+            // Show correct answer on question screen
+            const answers = document.querySelectorAll('.answer');
+            answers.forEach((answer, index) => {
+                if (index === data.correctAnswer) {
+                    answer.classList.add('correct');
+                } else if (index === selectedAnswer && selectedAnswer !== data.correctAnswer) {
+                    answer.classList.add('incorrect');
+                }
+            });
+        });
+
+        socket.on('leaderboard-update', (players) => {
+            updateLeaderboard(players, 'leaderboardContainer');
+            showScreen('leaderboardScreen');
+        });
+
+        socket.on('game-finished', (results) => {
+            updateLeaderboard(results, 'finalLeaderboard', true);
+            showScreen('finalScreen');
+        });
+
+        // Initialize
+        initializePlayer();
+    </script>
+</body>
+</html>
