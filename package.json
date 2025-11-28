@@ -1,0 +1,39 @@
+{
+  "name": "kahoot-clone-ready",
+  "version": "1.0.0",
+  "description": "Hotový Kahoot klon z GitHub - 100% funkčný",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo 'No build step required'",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "uuid": "^9.0.1",
+    "cors": "^2.8.5",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tanishqmanuja/kahoot-clone.git"
+  },
+  "keywords": [
+    "kahoot",
+    "quiz",
+    "real-time",
+    "multiplayer",
+    "education"
+  ],
+  "author": "Tanishq Manuja",
+  "license": "MIT"
+}
